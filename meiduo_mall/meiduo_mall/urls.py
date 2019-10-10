@@ -28,6 +28,6 @@ urlpatterns = [
     url(r'',include('payments.urls')),
     # 美多后台
     url(r'meiduo_admin/',include('meiduo_admin.urls')),
-    # 搜索
-    # url(r'^search/', include('haystack.urls')),
+
+    url(r'^search/', include('haystack.urls')),
 ]

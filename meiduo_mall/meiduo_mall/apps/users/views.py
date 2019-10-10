@@ -1,48 +1,37 @@
-from time import sleep
-
-from django.core.mail import send_mail
-from django.shortcuts import render, redirect
-from django.utils.decorators import method_decorator
+from django.shortcuts import render,redirect
 from django.views import View
-from django.contrib.auth import login, authenticate, logout
-from django.http import JsonResponse, HttpResponse
-from django.conf import settings
-from django_redis import get_redis_connection
-
-from carts.utils import get_carts
+# 发送邮件的方法
+from django.core.mail import send_mail
+from django.contrib.auth import login,authenticate,logout
+from django.http import HttpResponse,JsonResponse
 from users.models import User
-from django.contrib.auth.decorators import login_required
-from celery_tasks.send_email.tasks import send_emails
+from django_redis import get_redis_connection
 from itsdangerous import TimedJSONWebSignatureSerializer as TJS
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
+from django.utils.decorators import method_decorator
 import re
-import json, pickle, base64
+import json
+# 配置异步任务
+from celery_tasks.send_email.tasks import send_emails
 
+# # 注册首页的模型类
+# class IndexView(View):
+#
+#     def get(self,request):
+#
+#         return render(request,'index.html')
 
-# Create your views here.
-
-
-class IndexView(View):
-    def get(self, request):
-        # request.user可以获取当前登录过的用户对象
-        user = request.user
-        return render(request, 'index.html')
-
-
+# 用户注册
 class UserRegisterView(View):
-    """
-        用户注册
-    """
-
+    # 获取用户的注册页面
     def get(self, request):
-        """
-            获取注册页面
-        :param request:
-        :return:
-        """
+
         return render(request, 'register.html')
 
-    def post(self, request):
-        # 1、获取前端传递的表单数据
+
+    def post(self,request):
+        # 获取前段传递的数据
         data = request.POST
         username = data.get('user_name')
         pwd1 = data.get('pwd')
@@ -51,236 +40,221 @@ class UserRegisterView(View):
         image_code = data.get('pic_code')
         sms_code = data.get('msg_code')
         allow = data.get('allow')
-        # 2、验证表单数据
+        # 验证表单数据
         # 验证表单数据否存在
         if username is None or pwd1 is None or pwd2 is None or mobile is None or image_code is None or sms_code is None or allow is None:
             return render(request, 'register.html', {'error_message': '数据不能为空'})
-        # 验证用户名长度
-        if len(username) < 5 or len(username) > 20:
-            return render(request, 'register.html', {'error_message': '长度不符合要求'})
+        # 验证用户名的长度
+        if len(username)<5 or len(username)>20:
+            return HttpResponse(request,'register.html',{'error_message': '用户名的长度错误'})
 
-        # 支持手机号作为用户名进行注册
-        if re.match(r'1[3-9]\d{9}', username):
-            if username != mobile:
-                return render(request, 'register.html', {'error_message': '用户名和手机号不一致'})
+        # 用户名支持用手机号注册
+        if re.match(r'1[3-9]\d{9}',username):
+            if username!=mobile:
+                return HttpResponse(request, 'register.html', {'error_message': '用户名和手机号不一致'})
 
         # 验证用户名是否存在
         try:
-            user = User.objects.get(username=username)
+            user=User.objects.get(username=username)
         except:
-            user = None
-        if user:
-            return render(request, 'register.html', {'error_message': '用户存在'})
+            user=None
 
-        # 验证两次密码是否一致
-        if pwd1 != pwd2:
-            return render(request, 'register.html', {'error_message': '密码不一致'})
-        # 验证手机号格式
-        if not re.match(r'1[3-9]\d{9}', mobile):
-            return render(request, 'register.html', {'error_message': '手机格式不正确'})
+        # 如果用户名已存在
 
-        # 手机号长度
-        if len(mobile) != 11:
-            return render(request, 'register.html', {'error_message': '手机格式不正确'})
-        # 验证短信验证码长度
-        if len(sms_code) != 6:
-            return render(request, 'register.html', {'error_message': '短信验证码不正确'})
-        # 取出redis中的保存的当前手机号所对应的验证码
-        client = get_redis_connection('verfycode')
-        real_sms_code = client.get('sms_code_%s' % mobile)
+
+        # 验证输入的密码是否一致
+        if pwd1!=pwd2:
+            return HttpResponse(request, 'register.html', {'error_message': '两次输入的密码不一致'})
+
+        # 验证手机号的格式
+        if not re.match(r'1[3-9]\d{9}',mobile):
+            return HttpResponse(request, 'register.html', {'error_message': '手机号的格式不正确'})
+
+        # 验证短信验证码的长度
+        if len(sms_code)!=6:
+            return HttpResponse(request, 'register.html', {'error_message': '短信验证码的长度超出范围'})
+
+
+        # 取出redis数据库中保存的手机号对应的验证码
+        client=get_redis_connection('verfycode')
+        real_sms_code=client.get('sms_code_%s'%mobile)
+
+        # 判断验证是否为空
         if real_sms_code is None:
-            return render(request, 'register.html', {'error_message': '短信验证码已失效'})
-        if sms_code != real_sms_code.decode():
-            return render(request, 'register.html', {'error_message': '短信验证码错误'})
-        # 3、保存数据到数据库中
-        # User.objects.create(username=username,mobile=mobile,password=pwd1)
-        user = User.objects.create_user(username=username, mobile=mobile, password=pwd1)
-        # 注册保存数据成功后，进行状态保持
-        login(request, user)
-        # 4、注册成功后，引导用户跳转首页
+            return HttpResponse(request, 'register.html', {'error_message': '验证码已经过期'})
+        # 判断用户输入的验证码是否正确
+        if sms_code !=real_sms_code.decode():
+            return HttpResponse(request, 'register.html', {'error_message': '短信验证码错误'})
+
+        # 讲获取的数据保存到数据库中
+        # 状态保持
+        user=User.objects.create_user(username=username,mobile=mobile,password=pwd1)
+        # 状态保持
+        # 注册成功后返回首页
+        login(request,user)
         return redirect('/')
 
 
 class UserLoginView(View):
-    def get(self, request):
-        """
-            渲染返回登录页面
-        :param request:
-        :return:
-        """
-        return render(request, 'login.html')
+    def get(self,request):
+        # 返回登路界面
+        return render(request,'login.html',{'loginerror':'密码错误'})
 
-    def post(self, request):
-        """
-            登录业务
-        :param request:
-        :return:
-        """
-        # 1、获取数据
-        data = request.POST
-        username = data.get('username')
-        password = data.get('pwd')
-        remembered = data.get('remembered')
-        next = request.GET.get('next')
+    def post(self,request):
+
+        # 获取`数据
+        data=request.POST
+        username=data.get('username')
+        password=data.get('pwd')
+        remembered=data.get('remembered')
+        next=request.GET.get('next')
         if next is None:
             next = '/'
-        # 2、数据验证
-        # if username is None or password is None or username == '':
-        #     return render(request, 'login.html', {'loginerror': '数据不能为空'})
+
+        # 数据验证
+        # if username is None or password is None or username=='':
+        #     return render(request,'login.html',{'loginerror':'数据不能为空'})
         # try:
         #     user=User.objects.get(username=username)
-        # except:
-        #     return render(request, 'login.html', {'loginerror': '用户名错误'})
         #
-        # # 校验密码 加密1111111——————》aasasdasd
+        # except:
+        #     return render(request,'login.html',{'loginerror':'用户名错误'})
+        #
+        # # 校验密码
         # if not user.check_password(password):
-        #     return render(request, 'login.html', {'loginerror': '密码错误'})
+        #     return render(request,'login.html',{'loginerror':'密码错误'})
+        #
+        # if user is None:
+        #     return render(request,'login.html',{'loginerror':'用户明活密码错误'})
+        # 使用自定义的用户方法 authenticate
+        user=authenticate(request,username=username,password=password)
 
-        # authenticate是Django认证系统提供的用户校验方法，成功返回用户对象，失败返回None
-        user = authenticate(request, username=username, password=password)
         if user is None:
-            return render(request, 'login.html', {'loginerror': '用户名或密码错误'})
+            return render(request,'login.html',{'loginerror':'用户明活密码错误'})
 
-        # 3、状态保持
-        login(request, user)
-
-        # 判断用户是否选择记住登录
-        if remembered == 'on':
-            request.session.set_expiry(60 * 60 * 24 * 7)
-            response = redirect(next)
-            response.set_cookie('username', username, 60 * 60 * 24 * 7)
+        login(request,user)
+        # 判断用户是否选择记住登陆
+        if remembered=='on':
+            request.session.set_expiry(60*60*7)
+            response=redirect(next)
+            response.set_cookie('username',username,60*60*24*7)
         else:
+
             request.session.set_expiry(60 * 60 * 2)
             response = redirect(next)
             response.set_cookie('username', username, 60 * 60 * 2)
-        # 合并购物车
-        response = get_carts(request, response, user)
-        # 4、跳转到首页
-        return response
-
+        return  response
 
 class UserLogoutView(View):
-    """
-        退出登录
-    """
-
-    def get(self, request):
-        # 使用Django认证系统的方法完成退出登录  删除session
+    # 退出登陆
+    def get(self,request):
+        # 使用django认证的系统方法完成退出登陆 删除session数据
         logout(request)
 
-        response = redirect('/login/')
+        response=redirect('/login/')
         if request.COOKIES.get('username'):
             # 删除cookie中的username
             response.delete_cookie('username')
 
-        return response
-
-
-@method_decorator(login_required, name='dispatch')
-# login_required本身只能装饰方法，配合method_decorator类装饰器一块进行使用
+        return  response
+# 利用装饰其实现判断用户的登陆
+method_decorator(login_required,name='dispatch')
+# 判断用户是否已经登陆了
 class UserInfoView(View):
-    """
-        用户中心
-    """
-
-    def get(self, request):
-        return render(request, 'user_center_info.html')
+    # 用户中心
+    def get(self,request):
+        return render(request,'user_center_info.html')
 
 
+# 验证邮箱的有效性
 @method_decorator(login_required, name='dispatch')
 class UserEmailView(View):
-    def put(self, request):
-        """
-            邮箱更新
-        :param request:
-        :return:
-        """
-        # 1、获取json数据
-        data = request.body.decode()
-        # 2、将json转化为字典
-        data_dict = json.loads(data)
-        to_email = data_dict['email']
-        # 3、验证邮箱的有效性 往用户输入的邮箱中发送邮件
-        # 1-标题 2-邮件信息内容 3-用户看到发件人信息 4-收件人的邮箱 html_message 将标签当html标签使用
-        user = request.user
-        tjs = TJS(settings.SECRET_KEY, 300)
-        token = tjs.dumps({'username': user.username, 'email': to_email}).decode()
-        verify_url = settings.EMAIL_VERIFY_URL + '?token=%s' % token
-        send_emails.delay(to_email, verify_url, settings.EMAIL_FROM)
-        # 4、更新邮箱
+    def put(self,request):
+
+        # 获取json书库用户的基本信息
+        data=request.body.decode()
+        # 讲json数据转化为字典
+        data_dict=json.loads(data)
+        # 获取邮箱信息数据 标题 邮件信息内容  收件人信息内容 列表【收件人的邮箱】
+        to_emali=data_dict['email']
+        # 验证邮箱的有效性
+        # send_mall
+        # 更新邮箱数据
+        user=request.user
+        tjs=TJS(settings.SECRET_KEY,300)
+        token = tjs.dumps({'username': user.username, 'email':to_emali}).decode()
+        verify_url=settings.EMAIL_VERIFY_URL+'?token=%s'%token
+
+        send_emails(to_emali, verify_url, settings.EMAIL_FROM)
         if not user.is_authenticated:
-            return JsonResponse({'code': 4101})
-        user.email = to_email
-        # save方法必须执行
+            return JsonResponse({'code':'4101'})
+        user.email=to_emali
         user.save()
-
-        return JsonResponse({'code': 0})
-
+        # 正确登陆状态的
+        return JsonResponse({'code':'0'})
 
 @method_decorator(login_required, name='dispatch')
 class UserEmailVerifyView(View):
-    def get(self, request):
-        """
-            验证跳转到美多的邮箱验证验证连接
-        :param request:
-        :return:
-        """
-        # 1、获取token数据
-        token = request.GET.get('token')
+
+    def get(self,request):
+    #     获取token数据
+        token=request.GET.get('token')
+
         if token is None:
-            return HttpResponse("缺少token值", status=400)
-        # 2、解密token
+            return HttpResponse("缺少token值",status=400)
+
+        # 机密tocken
         tjs = TJS(settings.SECRET_KEY, 300)
         try:
-            data = tjs.loads(token)
+            data=tjs.loads(token)
         except:
-            return HttpResponse("无效token值", status=400)
-        # 3、提取username和email
-        username = data.get('username')
-        email = data.get('email')
+            return HttpResponse("无效的token值",status=400)
+
+        # 提起username heemail
+        username=data.get('username')
+        email=data.get('email')
+
         if username is None or email is None:
             return HttpResponse("token值失效", status=400)
-        # 4、验证username和email的数据机用户是否正确
         try:
-            user = User.objects.get(username=username, email=email)
+            # 教研username email是否正确
+            user=User.objects.get(username=username,email=email)
         except:
             return HttpResponse("错误的数据", status=400)
-        # 5、更细邮箱状态
-        user.email_active = True
+
+        # 更新邮箱数据
+        user.email_actice=True
         user.save()
-        # 6、返回结果
+
         return render(request, 'user_center_info.html')
 
 
-@method_decorator(login_required, name='dispatch')
+# 修改密碼的操作
 class ChangePWDView(View):
-    def get(self, request):
-        """
-            获取修改密码页面
-        :param request:
-        :return:
-        """
-        return render(request, 'user_center_pass.html')
+    def get(self,request):
+        # 返回修改密碼的頁面
+        return render(request,'user_center_pass.html')
 
-    def post(self, request):
-        """
-            修改密码
-        :param requeat:
-        :return:
-        """
-        # 1、获取表单中的密码信息
-        data = request.POST
-        old_pwd = data.get('old_pwd')
-        new_pwd = data.get('new_pwd')
-        new_cpwd = data.get('new_cpwd')
-        # 2、校验密码
-        user = request.user
+
+    # 實現修改密碼
+    def post(self,request):
+        # 獲取表單數據中的內容
+        data=request.POST
+        old_pwd=data.get('old_pwd')
+        new_pwd=data.get('new_pwd')
+        new_cpwd=data.get('new_cpwd')
+
+        # 校驗密碼
+        user=request.user
         if not user.check_password(old_pwd):
-            return render(request, 'user_center_pass.html', {'errors_pwd': '密码错误'})
-        if new_cpwd != new_pwd:
-            return render(request, 'user_center_pass.html', {'errors_pwd': '两次密码不一致'})
-        # 3、更新新密码
+            return render(request,'user_center_pass.html',{'errors_pwd':'密碼錯誤'})
+
+        if new_pwd!=new_cpwd:
+            return render(request,'user_center_pass.html',{'errors_pwd':'兩次密碼不一致'})
+
+        # 更新用戶的新密碼
         user.set_password(new_pwd)
         user.save()
-        # 4、返回结果
-        return render(request, 'user_center_pass.html', {'errors_pwd': '修改成功'})
+
+        # 返回請結果
+        return render(request,'user_center_pass.html',{'errors_pwd':'修改成功'})

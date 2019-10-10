@@ -6,15 +6,11 @@ from django.contrib.auth.models import AbstractUser
 # Create your models here.
 from meiduo_mall.utils.models import BaseModel
 
-
 class User(AbstractUser):
-    # 额外增加mobile字段，保存手机号信息
-    mobile = models.CharField(max_length=11, unique=True)
-    # 邮箱验证字段
-    email_active = models.BooleanField(default=False, verbose_name='邮箱状态')
-    default_address = models.ForeignKey('addresses.Address', related_name='users', null=True, blank=True)
+    """用户模型类"""
+    mobile = models.CharField(max_length=11, unique=True, verbose_name='手机号')
 
     class Meta:
-        # 指定用户表名
         db_table = 'tb_users'
-
+        verbose_name = '用户'
+        verbose_name_plural = verbose_name

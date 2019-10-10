@@ -41,19 +41,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'meiduo_mall.apps.users.apps.UsersConfig'
     'users.apps.UsersConfig',
-    'oauth.apps.OauthConfig',
-    'addresses.apps.AddressesConfig',
-    'contents.apps.ContentsConfig',
-    'goods.apps.GoodsConfig',
-    'orders.apps.OrdersConfig',
-    'payments.apps.PaymentsConfig',
+    # 'oauth.apps.OauthConfig',
+
+    # 'addresses.apps.AddressesConfig',
+    # 'contents.apps.ContentsConfig',
+    # 'goods.apps.GoodsConfig',
+    # 'orders.apps.OrdersConfig',
+    # 'payments.apps.PaymentsConfig',
+    #
+    # 'rest_framework'
 
 
     # ES搜索
-#     'haystack',
-#     'django_crontab',  # 定时任务
+    # 'haystack',
+    # 'django_crontab',  # 定时任务
 #     'corsheaders', # CORS
 ]
 
@@ -118,14 +120,6 @@ DATABASES = {
         'PASSWORD': 'meiduo',  # 数据库用户密码
         'NAME': 'meiduo_mall'  # 数据库名字
     },
-    # 'slave': {  # 读（从机）
-    #     'ENGINE': 'django.db.backends.mysql',
-    #     'HOST': '10.211.55.30',
-    #     'PORT': 8848,
-    #     'USER': 'root',
-    #     'PASSWORD': 'mysql',
-    #     'NAME': 'meiduo_mall'
-    # }
 }
 
 
@@ -151,9 +145,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -216,53 +210,53 @@ SESSION_CACHE_ALIAS = "session"
 
 
 # 日志配置
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,  # 是否禁用已经存在的日志器
-#     'formatters': {  # 日志信息显示的格式
-#         'verbose': {
-#             'format': '%(levelname)s %(asctime)s %(module)s %(lineno)d %(message)s'
-#         },
-#         'simple': {
-#             'format': '%(levelname)s %(module)s %(lineno)d %(message)s'
-#         },
-#     },
-#     'filters': {  # 对日志进行过滤
-#         'require_debug_true': {  # django在debug模式下才输出日志
-#             '()': 'django.utils.log.RequireDebugTrue',
-#         },
-#     },
-#     'handlers': {  # 日志处理方法
-#         'console': {  # 向终端中输出日志
-#             'level': 'INFO',
-#             'filters': ['require_debug_true'],
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'simple'
-#         },
-#         'file': {  # 向文件中输出日志
-#             'level': 'INFO',
-#             'class': 'logging.handlers.RotatingFileHandler',
-#             'filename': os.path.join(os.path.dirname(BASE_DIR), 'logs/meiduo.log'),  # 日志文件的位置
-#             'maxBytes': 300 * 1024 * 1024,
-#             'backupCount': 10,
-#             'formatter': 'verbose'
-#         },
-#     },
-#     'loggers': {  # 日志器
-#         'django': {  # 定义了一个名为django的日志器
-#             'handlers': ['console', 'file'],  # 可以同时向终端与文件中输出日志
-#             'propagate': True,  # 是否继续传递日志信息
-#             'level': 'INFO',  # 日志器接收的最低日志级别
-#         },
-#     }
-# }
-
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,  # 是否禁用已经存在的日志器
+    'formatters': {  # 日志信息显示的格式
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(lineno)d %(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s %(module)s %(lineno)d %(message)s'
+        },
+    },
+    'filters': {  # 对日志进行过滤
+        'require_debug_true': {  # django在debug模式下才输出日志
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {  # 日志处理方法
+        'console': {  # 向终端中输出日志
+            'level': 'INFO',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file': {  # 向文件中输出日志
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(os.path.dirname(BASE_DIR), 'logs/meiduo.log'),  # 日志文件的位置
+            'maxBytes': 300 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {  # 日志器
+        'django': {  # 定义了一个名为django的日志器
+            'handlers': ['console', 'file'],  # 可以同时向终端与文件中输出日志
+            'propagate': True,  # 是否继续传递日志信息
+            'level': 'INFO',  # 日志器接收的最低日志级别
+        },
+    }
+}
+#
 # 指定本项目用户模型类
 AUTH_USER_MODEL = 'users.User'
 
 # 指定自定义的用户认证后端
 AUTHENTICATION_BACKENDS = ['users.utils.UserUtils']
-# QQ的配置连接信息
+# # QQ的配置连接信息
 QQ_CLIENT_ID = '101518219'
 QQ_CLIENT_SECRET = '418d84ebdc7241efb79536886ae95224'
 QQ_REDIRECT_URI = 'http://www.meiduo.site:8000/oauth_callback'
@@ -273,9 +267,9 @@ LOGIN_URL = '/login/'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' # 指定邮件后端
 EMAIL_HOST = 'smtp.163.com' # 发邮件主机
 EMAIL_PORT = 25 # 发邮件端口
-EMAIL_HOST_USER = 'SXM_CPP@163.com' # 授权的邮箱
+EMAIL_HOST_USER = '18536109028@163.com' # 授权的邮箱
 EMAIL_HOST_PASSWORD = 'meiduo45' # 邮箱授权时获得的密码，非注册登录密码
-EMAIL_FROM = '美多商城<SXM_CPP@163.com>' # 发件人抬头
+EMAIL_FROM = '美多商城<18536109028@163.com>' # 发件人抬头
 
 # 邮箱验证链接
 EMAIL_VERIFY_URL = 'http://www.meiduo.site:8000/emails/verification/'
@@ -288,7 +282,7 @@ DEFAULT_FILE_STORAGE = 'meiduo_mall.utils.fasfdfs.fastdfsstorage.FastDFSStorage'
 # HAYSTACK_CONNECTIONS = {
 #     'default': {
 #         'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
-#         'URL': 'http://10.211.55.30:9200/', # Elasticsearch服务器ip地址，端口号固定为9200
+#         'URL': 'http://192.168.18.42:9200/', # Elasticsearch服务器ip地址，端口号固定为9200
 #         'INDEX_NAME': 'meiduo_mall', # Elasticsearch建立的索引库的名称
 #     },
 # }
@@ -325,6 +319,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
+    # 异常处理
+    'EXCEPTION_HANDLER': 'meiduo_mall.utils.exceptions.exception_handler',
 }
 # JWT配置
 JWT_AUTH = {
@@ -332,3 +328,4 @@ JWT_AUTH = {
     'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
     'JWT_RESPONSE_PAYLOAD_HANDLER':'meiduo_admin.utils.jwt_response_payload_handler'
 }
+
